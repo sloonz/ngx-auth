@@ -1,0 +1,33 @@
+#!/usr/bin/env node
+
+const process = require('process');
+
+const { default: parseJwk } = require("jose/jwk/parse");
+const { default: SignJWT } = require("jose/jwt/sign");
+
+if(process.argv.includes('-h') || process.argv.includes('--help') || process.argv.length <= 2) {
+	console.log(`Usage ${process.argv[0]} ${process.argv[1]} private-key origin [claim1:value1 [claim2:value2 ...]]`);
+	console.log(`valid claims are path and standard JWT claims like exp`);
+	console.log(`example: ./make-bypass-token $(vault kv get --field=bypass_private_key secret/infra/ngx-auth) http://localhost iat:$(date +%s)`);
+	process.exit(1);
+}
+
+async function main() {
+	const key = await parseJwk({ kty: "OKP", crv: "Ed25519", "d": process.argv[2], "alg": "EdDSA" });
+	const claims = { origin: process.argv[3] };
+	for(const extraClaim of process.argv.slice(4)) {
+		const [, claim, value] = extraClaim.match(/([^:]+):(.+)/);
+		claims[claim] = value;
+	}
+
+	if(!claims.path) {
+		claims.path = "/";
+	}
+
+	console.log(await new SignJWT(claims).setProtectedHeader({ alg: "EdDSA" }).setIssuedAt().sign(key));
+}
+
+main().catch(err => {
+	console.error(err);
+	process.exit(1);
+});

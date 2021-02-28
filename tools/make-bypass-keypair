@@ -1,0 +1,16 @@
+#!/usr/bin/env node
+
+const { default: generateKeyPair } = require('jose/util/generate_key_pair');
+const { default: fromKeyLike } = require('jose/jwk/from_key_like');
+
+async function main() {
+	const { privateKey } = await generateKeyPair("EdDSA", { crv: "Ed25519" });
+	const { x, d } = await fromKeyLike(privateKey);
+	console.log(`Public key: ${x}`);
+	console.log(`Private key: ${d}`);
+}
+
+main().catch(err => {
+	console.error(err);
+	process.exit(1);
+});
