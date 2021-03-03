@@ -13,27 +13,51 @@ export const loginPage = (providers: { provider: OidcProvider, url: string }[]) 
 	<head>
 		<title>Login</title>
 		<style>{`
-			a {
-				margin-right: 20px; background: #fff;
-				color: rgba(0,0,0,0.54);
-				box-shadow: rgb(0 0 0 / 20%) 1px 1px 5px 0;
-				border-color: transparent;
-				text-align: center;
-				border-radius: 3px;
-				width: 170px;
-				margin-bottom: 12px;
-				height: 30px;
+			html {
+				background-image: linear-gradient(0deg, rgb(24 100 218 / 10%), white);
+				min-height: 100vh;
+				min-width: 100vw;
+			}
+			body {
 				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				align-content: center;
+				justify-content: center;
+				height: 250px;
+				width: 400px;
+				margin: auto;
+				margin-top: calc(50vh - 150px);
+				border-radius: 5px;
+				box-shadow: 0 6px 20px 0px rgb(9 14 37 / 10%);
+				background: white;
+			}
+			a {
+				padding: 6px 24px !important;
+				margin: 12px 0px !important;
+				text-decoration: none;
+				width: 230px !important;
+				font-size: 14px;
+				font-weight: bold !important;
+				color: rgb(31 57 97 / 66%) !important;
+				transition: all .2s ease-in-out;
+				border: 1px solid white !important;
+				font-family: Arial, sans-serif !important;
+				text-align: center;
+				box-shadow: 0 2px 8px 0px rgb(9 14 37 / 15%)!important;
+				border-radius: 3px;
+				line-height: 30px;
+				height: 30px;
 				flex-flow: column wrap;
 				justify-content: center;
 				align-items: start;
-				font-family: Arial;
-				font-weight: 400;
-				padding: 0px 10px;
+				display: flex;
+				background: #fff;
 			}
-
-			a > span {
-				margin-right: 8px;
+			a:hover {
+				background: rgb(31 57 97 / 5%) !important;
+				border: 1px solid rgb(24 100 218 / 50%)!important;
+				box-shadow: 0 4px 15px 0px rgb(9 14 37 / 15%)!important;
 			}
 		`}</style>
 	</head>
