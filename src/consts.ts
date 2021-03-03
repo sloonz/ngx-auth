@@ -31,8 +31,4 @@ if(ENV !== Env.Production) {
 
 assert.ok(LISTEN);
 assert.ok(CALLBACK_ORIGIN);
-assert.ok(GOOGLE_CLIENT_ID);
-assert.ok(GOOGLE_CLIENT_SECRET);
-assert.ok(MICROSOFT_CLIENT_ID);
-assert.ok(MICROSOFT_CLIENT_SECRET);
 assert.ok(JWE_SECRET_KEY);

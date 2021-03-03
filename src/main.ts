@@ -25,7 +25,8 @@ import dbOptions, { Migration } from "./db";
 import * as C from "./consts";
 import { loginPage, notAuthorizedPage } from "./pages";
 
-interface OidcProvider {
+export interface OidcProvider {
+	id: string;
 	desc: string;
 	clientId: string;
 	clientSecret: string;
@@ -33,14 +34,16 @@ interface OidcProvider {
 	tokenUrl: string;
 	jwks: GetKeyFunction<JWSHeaderParameters, FlattenedJWSInput>;
 	issuer?: string;
+	enabled: boolean;
 }
 
 function first(s: string | string[]): string {
 	return Array.isArray(s) ? s[0] : s;
 }
 
-const oidcProviders: Record<string, OidcProvider> = {
-	google: {
+const oidcProviders: Record<string, OidcProvider> = Object.fromEntries([
+	{
+		id: "google",
 		desc: "Google",
 		clientId: C.GOOGLE_CLIENT_ID,
 		clientSecret: C.GOOGLE_CLIENT_SECRET,
@@ -48,17 +51,19 @@ const oidcProviders: Record<string, OidcProvider> = {
 		tokenUrl: "https://oauth2.googleapis.com/token",
 		jwks: createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs")),
 		issuer: "https://accounts.google.com",
+		enabled: !!(C.GOOGLE_CLIENT_ID && C.GOOGLE_CLIENT_SECRET),
 	},
-
-	microsoft: {
+	{
+		id: "microsoft",
 		desc: "Microsoft",
 		clientId: C.MICROSOFT_CLIENT_ID,
 		clientSecret: C.MICROSOFT_CLIENT_SECRET,
 		authorizeUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
 		tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
 		jwks: createRemoteJWKSet(new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys")),
+		enabled: !!(C.MICROSOFT_CLIENT_ID && C.MICROSOFT_CLIENT_SECRET),
 	},
-};
+].map(p => [p.id, p]));
 
 const app = new Koa();
 const router = new Router<any, Context>();
@@ -69,20 +74,19 @@ app.use(router.routes());
 
 router.get("/login", async ctx => {
 	const { state } = ctx.query;
-	const getParams = (providerName: string, provider: OidcProvider) => ({
+	const getParams = (provider: OidcProvider) => ({
 		state,
 		client_id: provider.clientId,
-		redirect_uri: `${C.CALLBACK_ORIGIN}/callback/${providerName}`,
+		redirect_uri: `${C.CALLBACK_ORIGIN}/callback/${provider.id}`,
 		response_type: "code",
 		response_mode: "query",
 		scope: "openid email",
 		prompt: "select_account",
 	});
-	const getUrl = (providerName: string, provider: OidcProvider) => `${provider.authorizeUrl}?${qs.stringify(getParams(providerName, provider))}`;
-	ctx.body = ReactDOMServer.renderToStaticMarkup(loginPage(Object.fromEntries(Object.entries(oidcProviders).map(([providerName, provider]) => [providerName, {
-		url: getUrl(providerName, provider),
-		desc: provider.desc,
-	}]))));
+	const getUrl = (provider: OidcProvider) => `${provider.authorizeUrl}?${qs.stringify(getParams(provider))}`;
+	const loginPageParams = Object.values(oidcProviders).filter(p => p.enabled).
+		map(provider => ({ provider, url: getUrl(provider) }));
+	ctx.body = ReactDOMServer.renderToStaticMarkup(loginPage(loginPageParams));
 });
 
 router.get("/auth", async ctx => {
