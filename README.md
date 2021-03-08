@@ -53,7 +53,7 @@ crypto.randomBytes(32).toString("base64").slice(0, 43)
 * Database connection information:
  - `DB_TYPE` (optional, default `sqlite3`): currently only `sqlite3` and `mysql2` are supported
  - `DB_FILENAME` (optional, default `db.sqlite`): only for `sqlite3`
- - `DB_SOCKETPATH`: only for `mysql2`
+ - `DB_SOCKET_PATH`: only for `mysql2`
  - `DB_USER`: only for `mysql2`
  - `DB_NAME`: only for `mysql2`
  - `DB_PASSWORD`: only for `mysql2`
