@@ -4,6 +4,7 @@ import { promisify } from "util";
 import crypto from "crypto";
 import { URL } from "url";
 import assert from "assert";
+import process from "process";
 
 import got from "got";
 import Koa, { Context } from "koa";
@@ -220,6 +221,11 @@ async function main() {
 	const db = dbOptions.type == "sqlite3" ?
 		Knex({ client: "sqlite3", connection: { filename: dbOptions.filename }, ...knexSnakeCaseMappers(), useNullAsDefault: true, migrations: { migrationSource }}) :
 		Knex({ client: "mysql2", connection: { database: dbOptions.database, user: dbOptions.user, socketPath: dbOptions.socketPath, password: dbOptions.password }, ...knexSnakeCaseMappers(), migrations: { migrationSource }});
+
+	process.on("SIGTERM", () => {
+		db.destroy();
+		process.exit(0);
+	});
 
 	await db.migrate.latest();
 	Model.knex(db);

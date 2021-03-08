@@ -44,7 +44,9 @@ for example `https://ngx-auth.example.com/`.
 in transit. You can generate it just by running this command in a node
 console :
 
-	crypto.randomBytes(32).toString("base64").slice(0, 43)
+```javascript
+crypto.randomBytes(32).toString("base64").slice(0, 43)
+```
 
 * `BYPASS_PUBLIC_KEY` (optional): see `Usage: bypass for APIs` below
 
@@ -58,6 +60,35 @@ console :
 
 After all relevant variables are set in the environment, you can just run
 `node main.js`.
+
+## Running with Docker
+
+* sqlite3 backend is the default, just mount `/data` volume:
+
+```shell
+docker run \
+    -e CALLBACK_ORIGIN=http://localhost:3000 \
+    -e JWE_SECRET_KEY=c+ovWcpeaZk4nnYhWG32QT1l9JNZgRybd6acpX5VozA \
+    -v /opt/ngx-auth/data:/data \
+    -p 3000:3000 \
+    sloonz/ngx-auth
+```
+
+* mysql2 backend using a mounted unix-domain socket:
+
+```shell
+docker run \
+    -e CALLBACK_ORIGIN=http://localhost:3000 \
+    -e JWE_SECRET_KEY=c+ovWcpeaZk4nnYhWG32QT1l9JNZgRybd6acpX5VozA \
+    -e DB_TYPE=mysql2 \
+    -e DB_SOCKET_PATH=/run/mysqld/mysqld.sock \
+    -e DB_USER=root \
+    -e DB_PASSWORD=password \
+    -e DB_NAME=ngx_auth \
+    -v /run/mysqld:/run/mysqld \
+    -p 3000:3000 \
+    sloonz/ngx-auth
+```
 
 ## Usage: simple nginx configuration
 
@@ -167,7 +198,7 @@ limit the generated token to be used on `/api`).
 `ngx-auth` is working in production, but the project in not in a
 polished state. For example, the OIDC providers are currently hardcoded
 (only Google OAuth and Azure AD), the installation process is manual,
-there is no Docker image nor any kind of versioning.
+there is not any kind of versioning.
 
 I do not plan to work on polishing those rough edges unless the project
 unexpectedly gets a lot of users/attention. However, if some of those
