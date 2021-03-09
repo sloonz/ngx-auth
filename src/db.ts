@@ -14,12 +14,12 @@ const migrations: Migration[] = [
 		async up(db: Knex) {
 			await db.schema.createTable("users", t => {
 				t.increments();
-				t.text("email").notNullable();
+				t.string("email").notNullable();
 				t.index("email");
 			});
 			await db.schema.createTable("origins", t => {
 				t.increments();
-				t.text("origin").notNullable();
+				t.string("origin").notNullable();
 				t.index("origin");
 			});
 			await db.schema.createTable("authorizations", t => {
