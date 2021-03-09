@@ -220,7 +220,7 @@ async function main() {
 
 	const db = dbOptions.type == "sqlite3" ?
 		Knex({ client: "sqlite3", connection: { filename: dbOptions.filename }, ...knexSnakeCaseMappers(), useNullAsDefault: true, migrations: { migrationSource }}) :
-		Knex({ client: "mysql2", connection: { database: dbOptions.database, user: dbOptions.user, socketPath: dbOptions.socketPath, password: dbOptions.password }, ...knexSnakeCaseMappers(), migrations: { migrationSource }});
+		Knex({ client: "mysql2", connection: { database: dbOptions.database, user: dbOptions.user, socketPath: dbOptions.socketPath, host: dbOptions.host, password: dbOptions.password }, ...knexSnakeCaseMappers(), migrations: { migrationSource }});
 
 	process.on("SIGTERM", () => {
 		db.destroy();

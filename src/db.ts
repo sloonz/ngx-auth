@@ -40,9 +40,10 @@ const migrations: Migration[] = [
 ];
 
 export default {
-	type: process.env.DB_TYPE || "sqlite3",
-	filename: process.env.DB_FILENAME || "db.sqlite",
-	socketPath: process.env.DB_SOCKET_PATH || "/run/mysqld/mysqld.sock",
+	type: process.env.DB_TYPE ?? "sqlite3",
+	filename: process.env.DB_FILENAME ?? "db.sqlite",
+	socketPath: process.env.DB_SOCKET_PATH ?? (process.env.DB_HOST ? undefined : "/run/mysqld/mysqld.sock"),
+	host: process.env.DB_HOST,
 	user: process.env.DB_USER,
 	database: process.env.DB_NAME,
 	password: process.env.DB_PASSWORD,
