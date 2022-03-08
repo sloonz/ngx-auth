@@ -93,6 +93,12 @@ router.get("/login", async ctx => {
 router.get("/auth", async ctx => {
 	const url = new URL(first(ctx.request.header["x-original-url"]));
 
+	if(ctx.request.headers["x-original-method"] == "OPTIONS" && ctx.request.headers["access-control-request-method"]) {
+		// CORS preflight requests are harmless and may not include credentials, always accept those
+		ctx.status = 200;
+		return;
+	}
+
 	if(ctx.request.header["x-ngx-auth-token"] && bypassKey) {
 		try {
 			const claims = (await jwtVerify(first(ctx.request.header["x-ngx-auth-token"]), await bypassKey)).payload;
