@@ -12,19 +12,13 @@ import Router from "koa-router";
 import ReactDOMServer from "react-dom/server";
 import { knexSnakeCaseMappers, Model } from "objection";
 import Knex from "knex";
+import * as jose from "jose";
 
-import type { JWSHeaderParameters, FlattenedJWSInput, GetKeyFunction } from "jose/types";
-import createRemoteJWKSet from "jose/jwks/remote";
-import parseJwk from "jose/jwk/parse";
-import jwtVerify from "jose/jwt/verify";
-import CompactEncrypt from "jose/jwe/compact/encrypt";
-import compactDecrypt from "jose/jwe/compact/decrypt";
+import { User, Authorization, Session } from "./entities.js";
+import dbOptions, { Migration } from "./db.js";
 
-import { User, Authorization, Session } from "./entities";
-import dbOptions, { Migration } from "./db";
-
-import * as C from "./consts";
-import { loginPage, notAuthorizedPage } from "./pages";
+import * as C from "./consts.js";
+import { loginPage, notAuthorizedPage } from "./pages.js";
 
 export interface OidcProvider {
 	id: string;
@@ -33,7 +27,7 @@ export interface OidcProvider {
 	clientSecret: string;
 	authorizeUrl: string;
 	tokenUrl: string;
-	jwks: GetKeyFunction<JWSHeaderParameters, FlattenedJWSInput>;
+	jwks: jose.JWTVerifyGetKey,
 	issuer?: string;
 	enabled: boolean;
 }
@@ -50,7 +44,7 @@ const oidcProviders: Record<string, OidcProvider> = Object.fromEntries([
 		clientSecret: C.GOOGLE_CLIENT_SECRET,
 		authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
 		tokenUrl: "https://oauth2.googleapis.com/token",
-		jwks: createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs")),
+		jwks: jose.createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs")),
 		issuer: "https://accounts.google.com",
 		enabled: !!(C.GOOGLE_CLIENT_ID && C.GOOGLE_CLIENT_SECRET),
 	},
@@ -61,15 +55,15 @@ const oidcProviders: Record<string, OidcProvider> = Object.fromEntries([
 		clientSecret: C.MICROSOFT_CLIENT_SECRET,
 		authorizeUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
 		tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-		jwks: createRemoteJWKSet(new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys")),
+		jwks: jose.createRemoteJWKSet(new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys")),
 		enabled: !!(C.MICROSOFT_CLIENT_ID && C.MICROSOFT_CLIENT_SECRET),
 	},
 ].map(p => [p.id, p]));
 
 const app = new Koa();
 const router = new Router<any, Context>();
-const secretKey = parseJwk({ kty: "oct", "k": C.JWE_SECRET_KEY, alg: "dir" });
-const bypassKey = C.BYPASS_PUBLIC_KEY && parseJwk({ kty: "OKP", crv: "Ed25519", x: C.BYPASS_PUBLIC_KEY, alg: "EdDSA" });
+const secretKey = await jose.importJWK({ kty: "oct", "k": C.JWE_SECRET_KEY, alg: "dir" });
+const bypassKey = C.BYPASS_PUBLIC_KEY && await jose.importJWK({ kty: "OKP", crv: "Ed25519", x: C.BYPASS_PUBLIC_KEY, alg: "EdDSA" });
 
 app.use(router.routes());
 
@@ -101,7 +95,7 @@ router.get("/auth", async ctx => {
 
 	if(ctx.request.header["x-ngx-auth-token"] && bypassKey) {
 		try {
-			const claims = (await jwtVerify(first(ctx.request.header["x-ngx-auth-token"]), await bypassKey)).payload;
+			const claims = (await jose.jwtVerify(first(ctx.request.header["x-ngx-auth-token"]), await bypassKey)).payload as Record<string, string>;
 			if(claims.origin === url.origin && url.pathname.startsWith(claims.path)) {
 				ctx.status = 200;
 			} else {
@@ -127,7 +121,7 @@ router.get("/auth", async ctx => {
 		}
 	} else {
 		const sessionId = crypto.randomBytes(16).toString("hex");
-		const state = await new CompactEncrypt(Buffer.from(JSON.stringify([sessionId, url.toString()]))).
+		const state = await new jose.CompactEncrypt(Buffer.from(JSON.stringify([sessionId, url.toString()]))).
 			setProtectedHeader({ enc: "A256GCM", alg: "dir" }).
 			encrypt(await secretKey);
 
@@ -138,7 +132,7 @@ router.get("/auth", async ctx => {
 });
 
 router.get("/callback/:provider", async ctx => {
-	const [ sessionId, returnUrl ] = JSON.parse(Buffer.from((await compactDecrypt(first(ctx.query.state), await secretKey)).plaintext).toString()) as string[];
+	const [ sessionId, returnUrl ] = JSON.parse(Buffer.from((await jose.compactDecrypt(first(ctx.query.state), await secretKey)).plaintext).toString()) as string[];
 
 	const provider = oidcProviders[ctx.params.provider];
 	if(!provider) {
@@ -156,7 +150,7 @@ router.get("/callback/:provider", async ctx => {
 	};
 	const res = await got.post<{ id_token: string }>(provider.tokenUrl, { form: params, responseType: "json" });
 	const { id_token: idToken } = res.body;
-	const { payload } = await jwtVerify(idToken, provider.jwks, {
+	const { payload } = await jose.jwtVerify(idToken, provider.jwks, {
 		algorithms: ["RS256"],
 		issuer: provider.issuer,
 		audience: provider.clientId,
@@ -216,17 +210,21 @@ async function main() {
 		async getMigrations() {
 			return dbOptions.migrations;
 		},
-		getMigration(migration: Migration) {
-			return { down: defaultDown, ...migration };
+		async getMigration(migration: Migration) {
+			return {down: defaultDown, ...migration};
 		},
 		getMigrationName(migration: Migration) {
 			return migration.name;
 		},
 	};
 
+	// TODO: cleanup once https://github.com/Vincit/objection.js/issues/2341 is fixed
+	const {wrapIdentifier: objectionWrap, postProcessResponse} = knexSnakeCaseMappers();
+	const wrapIdentifier: typeof objectionWrap = (identifier, origWrap) => identifier && objectionWrap(identifier, origWrap);
+	const commonOptions = {wrapIdentifier, postProcessResponse, migrations: { migrationSource }};
 	const db = dbOptions.type == "sqlite3" ?
-		Knex({ client: "sqlite3", connection: { filename: dbOptions.filename }, ...knexSnakeCaseMappers(), useNullAsDefault: true, migrations: { migrationSource }}) :
-		Knex({ client: "mysql2", connection: { database: dbOptions.database, user: dbOptions.user, socketPath: dbOptions.socketPath, host: dbOptions.host, password: dbOptions.password }, ...knexSnakeCaseMappers(), migrations: { migrationSource }});
+		Knex.knex({ client: "sqlite3", connection: { filename: dbOptions.filename }, ...knexSnakeCaseMappers(), useNullAsDefault: true, ...commonOptions}) :
+		Knex.knex({ client: "mysql2", connection: { database: dbOptions.database, user: dbOptions.user, socketPath: dbOptions.socketPath, host: dbOptions.host, password: dbOptions.password }, ...commonOptions});
 
 	process.on("SIGTERM", () => {
 		db.destroy();
@@ -239,4 +237,7 @@ async function main() {
 	await listen(app, C.LISTEN);
 }
 
-main().catch(console.log);
+main().catch(err => {
+	console.error(err);
+	process.exit(1);
+});

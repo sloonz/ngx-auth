@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import type Knex from "knex";
+import type {Knex} from "knex";
 
 export interface Migration {
     name: string;
