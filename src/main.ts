@@ -60,7 +60,7 @@ const oidcProviders: Record<string, OidcProvider> = Object.fromEntries([
 	},
 ].map(p => [p.id, p]));
 
-const app = new Koa();
+const app = new Koa({proxy: true});
 const router = new Router<any, Context>();
 const secretKey = await jose.importJWK({ kty: "oct", "k": C.JWE_SECRET_KEY, alg: "dir" });
 const bypassKey = C.BYPASS_PUBLIC_KEY && await jose.importJWK({ kty: "OKP", crv: "Ed25519", x: C.BYPASS_PUBLIC_KEY, alg: "EdDSA" });
