@@ -1,9 +1,9 @@
-FROM node:14 as builder
+FROM node:19 as builder
 WORKDIR /build
 COPY . .
 RUN npm ci && npm run build
 
-FROM node:14
+FROM node:19
 WORKDIR /opt/ngx-auth
 ENV NODE_ENV=production
 COPY --from=builder /build/package.json /build/package-lock.json ./
