@@ -14,7 +14,7 @@ import { knexSnakeCaseMappers, Model } from "objection";
 import Knex from "knex";
 import * as jose from "jose";
 
-import { User, Authorization, Session } from "./entities.js";
+import { User, Authorization, Session, Origin } from "./entities.js";
 import dbOptions, { Migration } from "./db.js";
 
 import * as C from "./consts.js";
@@ -120,13 +120,14 @@ router.get("/auth", async ctx => {
 			ctx.status = 403;
 		}
 	} else {
+		const origin = await Origin.query().findOne({origin: url.origin});
 		const sessionId = crypto.randomBytes(16).toString("hex");
 		const state = await new jose.CompactEncrypt(Buffer.from(JSON.stringify([sessionId, url.toString()]))).
 			setProtectedHeader({ enc: "A256GCM", alg: "dir" }).
 			encrypt(await secretKey);
 
 		ctx.status = 401;
-		ctx.cookies.set("ngx-auth-session", sessionId);
+		ctx.cookies.set("ngx-auth-session", sessionId, {sameSite: origin?.sameSiteCookiePolicy ?? "lax"});
 		ctx.set({"Location": `${C.CALLBACK_ORIGIN}/login?${qs.stringify({ state })}`});
 	}
 });

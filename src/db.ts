@@ -11,7 +11,7 @@ export interface Migration {
 const migrations: Migration[] = [
 	{
 		name: "initial-tables",
-		async up(db: Knex) {
+		async up(db) {
 			await db.schema.createTable("users", t => {
 				t.increments();
 				t.string("email").notNullable();
@@ -36,6 +36,14 @@ const migrations: Migration[] = [
 				t.foreign("user_id").references("id").inTable("users");
 			});
 		}
+	},
+	{
+		name: "origin-add-same-site-cookie-policy",
+		async up(db) {
+			await db.schema.alterTable("origins", t => {
+				t.string("same_site_cookie_policy").nullable();
+			});
+		},
 	},
 ];
 

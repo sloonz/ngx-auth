@@ -35,6 +35,7 @@ export class Origin extends Model {
 
 	id!: number;
 	origin!: string;
+	sameSiteCookiePolicy!: "none" | "strict" | "lax" | null;
 
 	authorizations?: Authorization[];
 
