@@ -1,17 +1,17 @@
 {
     "compilerOptions": {
-        "module": "es2022",
+        "module": "esnext",
         "esModuleInterop": true,
-        "target": "es2021",
+        "target": "es2022",
         "noImplicitAny": true,
-        "moduleResolution": "node16",
+        "moduleResolution": "bundler",
         "sourceMap": true,
         "outDir": "build",
         "baseUrl": ".",
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "jsx": "react",
-        "lib": ["es2021"]
+        "lib": ["es2022", "dom"]
     },
     "include": [
         "src/**/*.ts"

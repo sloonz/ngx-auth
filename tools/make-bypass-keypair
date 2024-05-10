@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
-const { default: generateKeyPair } = require('jose/util/generate_key_pair');
-const { default: fromKeyLike } = require('jose/jwk/from_key_like');
+import {generateKeyPair, exportJWK} from "jose";
 
 async function main() {
-	const { privateKey } = await generateKeyPair("EdDSA", { crv: "Ed25519" });
-	const { x, d } = await fromKeyLike(privateKey);
-	console.log(`Public key: ${x}`);
-	console.log(`Private key: ${d}`);
+	const { privateKey, publicKey } = await generateKeyPair("EdDSA", { crv: "Ed25519" });
+	console.log(`Public key: ${Buffer.from(JSON.stringify(await exportJWK(publicKey))).toString("base64url")}`);
+	console.log(`Private key: ${Buffer.from(JSON.stringify(await exportJWK(privateKey))).toString("base64url")}`);
 }
 
 main().catch(err => {

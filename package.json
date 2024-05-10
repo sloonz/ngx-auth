@@ -7,34 +7,34 @@
     "build:watch": "tsc -w",
     "start": "node ./main.js",
     "lint": "eslint src",
-    "prepare": "test \"$NODE_ENV\" = \"production\" || husky install"
+    "prepare": "test \"$NODE_ENV\" = \"production\" || husky"
   },
   "devDependencies": {
     "@types/got": "^9.6.12",
-    "@types/koa": "^2.13.5",
-    "@types/koa-router": "^7.4.4",
-    "@types/node": "^18.11.9",
-    "@types/react": "^18.0.25",
-    "@types/react-dom": "^18.0.8",
-    "@typescript-eslint/eslint-plugin": "^5.42.0",
-    "@typescript-eslint/parser": "^5.42.0",
-    "eslint": "^8.27.0",
-    "eslint-plugin-react": "^7.31.10",
-    "husky": "^8.0.1",
+    "@types/koa": "^2.15.0",
+    "@types/koa-router": "^7.4.8",
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^7.15.0",
+    "@typescript-eslint/parser": "^7.15.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.34.3",
+    "husky": "^9.0.11",
     "source-map-support": "^0.5.21",
-    "typescript": "^4.8.4"
+    "typescript": "^5.5.3"
   },
   "dependencies": {
-    "got": "^12.5.2",
-    "jose": "^4.10.4",
-    "knex": "^2.3.0",
-    "koa": "^2.13.4",
-    "koa-router": "^12.0.0",
-    "mysql2": "^2.3.3",
-    "objection": "^3.0.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "reflect-metadata": "^0.1.13",
-    "sqlite3": "^5.1.2"
+    "got": "^14.4.1",
+    "jose": "^5.6.3",
+    "knex": "^3.1.0",
+    "koa": "^2.15.3",
+    "koa-router": "^12.0.1",
+    "mysql2": "^3.10.2",
+    "objection": "^3.1.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7"
   }
 }

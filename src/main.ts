@@ -63,7 +63,7 @@ const oidcProviders: Record<string, OidcProvider> = Object.fromEntries([
 const app = new Koa({proxy: true});
 const router = new Router<any, Context>();
 const secretKey = await jose.importJWK({ kty: "oct", "k": C.JWE_SECRET_KEY, alg: "dir" });
-const bypassKey = C.BYPASS_PUBLIC_KEY && await jose.importJWK({ kty: "OKP", crv: "Ed25519", x: C.BYPASS_PUBLIC_KEY, alg: "EdDSA" });
+const bypassKey = C.BYPASS_PUBLIC_KEY && await jose.importJWK(JSON.parse(Buffer.from(C.BYPASS_PUBLIC_KEY, "base64url").toString()));
 
 app.use(router.routes());
 
@@ -95,7 +95,7 @@ router.get("/auth", async ctx => {
 
 	if(ctx.request.header["x-ngx-auth-token"] && bypassKey) {
 		try {
-			const claims = (await jose.jwtVerify(first(ctx.request.header["x-ngx-auth-token"]), await bypassKey)).payload as Record<string, string>;
+			const claims = (await jose.jwtVerify(first(ctx.request.header["x-ngx-auth-token"]), bypassKey)).payload as Record<string, string>;
 			if(claims.origin === url.origin && url.pathname.startsWith(claims.path)) {
 				ctx.status = 200;
 			} else {
@@ -124,7 +124,7 @@ router.get("/auth", async ctx => {
 		const sessionId = crypto.randomBytes(16).toString("hex");
 		const state = await new jose.CompactEncrypt(Buffer.from(JSON.stringify([sessionId, url.toString()]))).
 			setProtectedHeader({ enc: "A256GCM", alg: "dir" }).
-			encrypt(await secretKey);
+			encrypt(secretKey);
 
 		ctx.status = 401;
 		ctx.cookies.set("ngx-auth-session", sessionId, {sameSite: origin?.sameSiteCookiePolicy ?? "lax"});
@@ -133,7 +133,7 @@ router.get("/auth", async ctx => {
 });
 
 router.get("/callback/:provider", async ctx => {
-	const [ sessionId, returnUrl ] = JSON.parse(Buffer.from((await jose.compactDecrypt(first(ctx.query.state), await secretKey)).plaintext).toString()) as string[];
+	const [ sessionId, returnUrl ] = JSON.parse(Buffer.from((await jose.compactDecrypt(first(ctx.query.state), secretKey)).plaintext).toString()) as string[];
 
 	const provider = oidcProviders[ctx.params.provider];
 	if(!provider) {
@@ -201,9 +201,6 @@ function listen(app: Koa, listen: string, opts?: { socketPerms?: number }): Prom
 }
 
 async function main() {
-	await secretKey;
-	bypassKey && await bypassKey;
-
 	assert(["sqlite3", "mysql2"].indexOf(dbOptions.type) !== -1);
 
 	const defaultDown = async () => { throw new Error("down migration not implemented"); };

@@ -169,8 +169,8 @@ the `tools/` directory :
 
 ```
 $ ./make-bypass-keypair
-Public key: rxbaR0M2D3sfKxZYp7BHj0EyptT1yyN2owCya0SwRf0
-Private key: j8zVPs3ncx2yuRfo2wNHxPzDmwrSfuBz5yFvoAUbO90
+Public key: eyJjcnYiOiJFZDI1NTE5IiwieCI6Ik5Ka21IVGRuekhYMEd1Y3RDMkgxb3RQRmN1Z1I3aE1COWVRMEQ0amQ5RDgiLCJrdHkiOiJPS1AifQ
+Private key: eyJjcnYiOiJFZDI1NTE5IiwiZCI6IlVXcU44bjZDbW45Ni1ieHZmdWpUVGdfOHFwVjBueXJ1VmpLR2FsNTBFSnciLCJ4IjoiTkprbUhUZG56SFgwR3VjdEMySDFvdFBGY3VnUjdoTUI5ZVEwRDRqZDlEOCIsImt0eSI6Ik9LUCJ9
 ```
 
 The public key must be set to the `BYPASS_PUBLIC_KEY` environnement
@@ -179,14 +179,14 @@ generate a bypass token that will be accepted by the `ngx-auth` instance
 configured to use the associated public key :
 
 ```
-$ ./make-bypass-token j8zVPs3ncx2yuRfo2wNHxPzDmwrSfuBz5yFvoAUbO90 https://mysite.example.com
-eyJhbGciOiJFZERTQSJ9.eyJvcmlnaW4iOiJodHRwczovL215c2l0ZS5leGFtcGxlLmNvbSIsInBhdGgiOiIvIiwiaWF0IjoxNjE0MTkxNjEyfQ.LpPK_HpA-VWGbFOr6HKttibpgVKNInzXWuC4goFn7-mRKU1gZ2U0T9Asabe0mY24hCjOxG2Pr2yRPkDe4toZDw
+$ ./make-bypass-token eyJjcnYiOiJFZDI1NTE5IiwiZCI6IlVXcU44bjZDbW45Ni1ieHZmdWpUVGdfOHFwVjBueXJ1VmpLR2FsNTBFSnciLCJ4IjoiTkprbUhUZG56SFgwR3VjdEMySDFvdFBGY3VnUjdoTUI5ZVEwRDRqZDlEOCIsImt0eSI6Ik9LUCJ9 https://mysite.example.com
+eyJhbGciOiJFZERTQSJ9.eyJvcmlnaW4iOiJodHRwczovL215c2l0ZS5leGFtcGxlLmNvbSIsInBhdGgiOiIvIiwiaWF0IjoxNzIwMDM1NjQxfQ.GytQkBTPVu7bdHRaXNOIYTJq5rYKYPkknDN8ILrbQI_beXL1_P1Dpm0gV5Q_ABCDLFEMDbK8U_W-btn1x96vBw
 ```
 
 The token can now by passed in the `X-Ngx-Auth-Token` HTTP header :
 
 ```
-curl https://mysite.example.com -H "X-Ngx-Auth-Token: eyJhbGciOiJFZERTQSJ9.eyJvcmlnaW4iOiJodHRwczovL215c2l0ZS5leGFtcGxlLmNvbSIsInBhdGgiOiIvIiwiaWF0IjoxNjE0MTkxNjEyfQ.LpPK_HpA-VWGbFOr6HKttibpgVKNInzXWuC4goFn7-mRKU1gZ2U0T9Asabe0mY24hCjOxG2Pr2yRPkDe4toZDw"
+curl https://mysite.example.com -H "X-Ngx-Auth-Token: eyJhbGciOiJFZERTQSJ9.eyJvcmlnaW4iOiJodHRwczovL215c2l0ZS5leGFtcGxlLmNvbSIsInBhdGgiOiIvIiwiaWF0IjoxNzIwMDM1NjQxfQ.GytQkBTPVu7bdHRaXNOIYTJq5rYKYPkknDN8ILrbQI_beXL1_P1Dpm0gV5Q_ABCDLFEMDbK8U_W-btn1x96vBw"
 ```
 
 You can give additional standard JWT claims to `make-bypass-token`
@@ -218,3 +218,15 @@ a database.
 
 * [Okta](https://developer.okta.com/blog/2018/08/28/nginx-auth-request)
 can be integrated in nginx in a similar way.
+
+## Migrating to 2.0
+
+Version 2.0 broke the format of bypass keys (public/private). Here is
+how you convert from the old format to the new format:
+
+```javascript
+const oldPublicKey = "rxbaR0M2D3sfKxZYp7BHj0EyptT1yyN2owCya0SwRf0";
+const oldPrivateKey = "j8zVPs3ncx2yuRfo2wNHxPzDmwrSfuBz5yFvoAUbO90";
+console.log("Public Key:", Buffer.from(JSON.stringify({kty: "OKP", crv: "Ed25519", x: oldPublicKey, "alg": "EdDSA"})).toString("base64url"));
+console.log("Private Key:", Buffer.from(JSON.stringify({kty: "OKP", crv: "Ed25519", x: oldPublicKey, d: oldPrivateKey, "alg": "EdDSA"})).toString("base64url"));
+```
