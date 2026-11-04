@@ -12,16 +12,32 @@ to validate the request and all subsequent ones of this user session.
 
 ## Installation
 
+The Rust implementation requires Rust 1.92 or newer, a C compiler,
+`pkg-config`, and OpenSSL development headers (Debian/Ubuntu:
+`apt install build-essential pkg-config libssl-dev`). SQLite is bundled.
+
 ```shell
-git clone https://gituhb.com/sloonz/ngx-auth.git
-cd ngx-auth
-npm ci && npm run build
-cp package.json  package-lock.json build
+cargo build --release --locked
+cargo test --locked
 ```
 
-Then copy the build repository to where you want to actually install
-ngx-auth (for example: `/usr/local/opt/ngx-auth`), and run `npm ci`
-in your installation directory.
+The executable is `target/release/ngx-auth`; copy it to your installation
+directory. OpenSSL must also be installed at runtime.
+
+Running `ngx-auth` starts the server. The available commands are:
+
+```shell
+ngx-auth server                                      # also the default
+ngx-auth make-bypass-pair
+ngx-auth make-bypass-token PRIVATE_KEY ORIGIN [CLAIM:VALUE ...]
+```
+
+For local development, `cargo run` starts the server on
+port 47814 with a temporary encryption key. Production deployments should
+set `NODE_ENV=production`, which requires explicit `LISTEN`,
+`CALLBACK_ORIGIN`, and `JWE_SECRET_KEY` values.
+
+The Docker image and release workflow build the Rust implementation.
 
 ## Configuration and Running
 
@@ -40,12 +56,11 @@ to authenticate users using Azure AD
 * `CALLBACK_ORIGIN`: HTTP origin where the service will be accessible,
 for example `https://ngx-auth.example.com/`.
 
-* `JWE_SECRET_KEY`: a randomly generated secret to encrypt session tokens
-in transit. You can generate it just by running this command in a node
-console :
+* `JWE_SECRET_KEY`: a base64-encoded 32-byte secret to encrypt login state.
+Existing keys are supported. Generate a new key with:
 
-```javascript
-crypto.randomBytes(32).toString("base64").slice(0, 43)
+```shell
+openssl rand -base64 32
 ```
 
 * `BYPASS_PUBLIC_KEY` (optional): see `Usage: bypass for APIs` below
@@ -60,9 +75,12 @@ crypto.randomBytes(32).toString("base64").slice(0, 43)
  - `DB_PASSWORD`: only for `mysql2`
 
 After all relevant variables are set in the environment, you can just run
-`node main.js`.
+`ngx-auth` (or `target/release/ngx-auth` from the checkout).
 
 ## Running with Docker
+
+Build the Rust image locally with `docker build -t ngx-auth:rust .`.
+Use `ngx-auth:rust` in place of the published image name below when testing.
 
 * sqlite3 backend is the default, just mount `/data` volume:
 
@@ -164,11 +182,10 @@ Just remove the `ngx-auth-session` cookie.
 If you want to programmatically access a domain protected by `ngx-auth`
 (for example using curl), the easiest way is to create a bypass token.
 
-First, create a bypass keypair by using `make-bypass-keypair` script in
-the `tools/` directory :
+First, create a bypass keypair using `ngx-auth make-bypass-pair`:
 
 ```
-$ ./make-bypass-keypair
+$ ngx-auth make-bypass-pair
 Public key: eyJjcnYiOiJFZDI1NTE5IiwieCI6Ik5Ka21IVGRuekhYMEd1Y3RDMkgxb3RQRmN1Z1I3aE1COWVRMEQ0amQ5RDgiLCJrdHkiOiJPS1AifQ
 Private key: eyJjcnYiOiJFZDI1NTE5IiwiZCI6IlVXcU44bjZDbW45Ni1ieHZmdWpUVGdfOHFwVjBueXJ1VmpLR2FsNTBFSnciLCJ4IjoiTkprbUhUZG56SFgwR3VjdEMySDFvdFBGY3VnUjdoTUI5ZVEwRDRqZDlEOCIsImt0eSI6Ik9LUCJ9
 ```
@@ -179,7 +196,7 @@ generate a bypass token that will be accepted by the `ngx-auth` instance
 configured to use the associated public key :
 
 ```
-$ ./make-bypass-token eyJjcnYiOiJFZDI1NTE5IiwiZCI6IlVXcU44bjZDbW45Ni1ieHZmdWpUVGdfOHFwVjBueXJ1VmpLR2FsNTBFSnciLCJ4IjoiTkprbUhUZG56SFgwR3VjdEMySDFvdFBGY3VnUjdoTUI5ZVEwRDRqZDlEOCIsImt0eSI6Ik9LUCJ9 https://mysite.example.com
+$ ngx-auth make-bypass-token eyJjcnYiOiJFZDI1NTE5IiwiZCI6IlVXcU44bjZDbW45Ni1ieHZmdWpUVGdfOHFwVjBueXJ1VmpLR2FsNTBFSnciLCJ4IjoiTkprbUhUZG56SFgwR3VjdEMySDFvdFBGY3VnUjdoTUI5ZVEwRDRqZDlEOCIsImt0eSI6Ik9LUCJ9 https://mysite.example.com
 eyJhbGciOiJFZERTQSJ9.eyJvcmlnaW4iOiJodHRwczovL215c2l0ZS5leGFtcGxlLmNvbSIsInBhdGgiOiIvIiwiaWF0IjoxNzIwMDM1NjQxfQ.GytQkBTPVu7bdHRaXNOIYTJq5rYKYPkknDN8ILrbQI_beXL1_P1Dpm0gV5Q_ABCDLFEMDbK8U_W-btn1x96vBw
 ```
 
@@ -189,7 +206,7 @@ The token can now by passed in the `X-Ngx-Auth-Token` HTTP header :
 curl https://mysite.example.com -H "X-Ngx-Auth-Token: eyJhbGciOiJFZERTQSJ9.eyJvcmlnaW4iOiJodHRwczovL215c2l0ZS5leGFtcGxlLmNvbSIsInBhdGgiOiIvIiwiaWF0IjoxNzIwMDM1NjQxfQ.GytQkBTPVu7bdHRaXNOIYTJq5rYKYPkknDN8ILrbQI_beXL1_P1Dpm0gV5Q_ABCDLFEMDbK8U_W-btn1x96vBw"
 ```
 
-You can give additional standard JWT claims to `make-bypass-token`
+You can give additional standard JWT claims to `ngx-auth make-bypass-token`
 (for example `exp` for expiration date). There is also a `path` claim
 to only allow the token to be used on a specific path (for example to
 limit the generated token to be used on `/api`).
@@ -224,9 +241,21 @@ can be integrated in nginx in a similar way.
 Version 2.0 broke the format of bypass keys (public/private). Here is
 how you convert from the old format to the new format:
 
-```javascript
-const oldPublicKey = "rxbaR0M2D3sfKxZYp7BHj0EyptT1yyN2owCya0SwRf0";
-const oldPrivateKey = "j8zVPs3ncx2yuRfo2wNHxPzDmwrSfuBz5yFvoAUbO90";
-console.log("Public Key:", Buffer.from(JSON.stringify({kty: "OKP", crv: "Ed25519", x: oldPublicKey, "alg": "EdDSA"})).toString("base64url"));
-console.log("Private Key:", Buffer.from(JSON.stringify({kty: "OKP", crv: "Ed25519", x: oldPublicKey, d: oldPrivateKey, "alg": "EdDSA"})).toString("base64url"));
+```python
+import base64
+import json
+
+old_public_key = "rxbaR0M2D3sfKxZYp7BHj0EyptT1yyN2owCya0SwRf0"
+old_private_key = "j8zVPs3ncx2yuRfo2wNHxPzDmwrSfuBz5yFvoAUbO90"
+
+
+def encode_key(key):
+    data = json.dumps(key, separators=(",", ":")).encode()
+    return base64.urlsafe_b64encode(data).decode().rstrip("=")
+
+
+public_key = {"kty": "OKP", "crv": "Ed25519", "x": old_public_key, "alg": "EdDSA"}
+private_key = {**public_key, "d": old_private_key}
+print("Public Key:", encode_key(public_key))
+print("Private Key:", encode_key(private_key))
 ```
