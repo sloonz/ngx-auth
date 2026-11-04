@@ -30,6 +30,7 @@ async fn fixture() -> (Database, Config) {
         .unwrap();
     let config = Config {
         listen: "0".into(),
+        spoa_listen: None,
         origin: "https://auth.example".into(),
         secret: vec![42; 32],
         bypass_key: None,

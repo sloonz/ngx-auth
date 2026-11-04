@@ -1,8 +1,8 @@
 # ngx-auth
 
-`ngx-auth` is a simple solution to protect any website using nginx
+`ngx-auth` protects websites using OpenID Connect, with nginx
 [`auth_request`](http://nginx.org/en/docs/http/ngx_http_auth_request_module.html)
-mechanism and OpenID Connect.
+or HAProxy's Stream Processing Offload Engine (SPOE).
 
 Any non-authenticated user will be redirected to `ngx-auth` login page,
 which will delegate the authentication to one or multilpe OpenID Connect
@@ -52,6 +52,10 @@ to authenticate users using Azure AD
 
 * `LISTEN`: where the internal HTTP server will listen, for example
 `8080` or `127.0.0.1:8080`. Supports Unix sockets by giving a path.
+
+* `SPOA_LISTEN` (optional): enable the HAProxy agent on a separate TCP
+IP:port address, for example `127.0.0.1:12345` or `[::1]:12345`.
+The HTTP listener remains available for browser login and OIDC callbacks.
 
 * `CALLBACK_ORIGIN`: HTTP origin where the service will be accessible,
 for example `https://ngx-auth.example.com/`.
@@ -137,6 +141,58 @@ location /.internal/ngx-auth-request {
 ```
 
 (replace `ngx-auth.example.com` with your ngx-auth installation)
+
+## Usage: HAProxy SPOE
+
+Enable the SPOP 2.0 agent alongside the HTTP server:
+
+```shell
+SPOA_LISTEN=127.0.0.1:12345 CALLBACK_ORIGIN=http://auth.example.com:8080 ngx-auth
+```
+
+The complete configuration is in [examples/haproxy.cfg](examples/haproxy.cfg)
+and [examples/ngx-auth.spoe](examples/ngx-auth.spoe). Run from the checkout root:
+
+```shell
+haproxy -c -f examples/haproxy.cfg
+haproxy -f examples/haproxy.cfg
+```
+
+Update the hostnames, bind address, and application backend for your deployment.
+The example listens on port 8080, routes `auth.example.com` to the public
+login/callback HTTP server, and protects other hosts through SPOE. Add each
+protected origin (including scheme and non-default port) and its authorizations
+to the database as described below. For production, configure TLS on HAProxy's
+frontend and use an HTTPS `CALLBACK_ORIGIN`. The example derives the URL and
+cookie's Secure flag from `ssl_fc`; adapt both if TLS terminates at another
+trusted proxy. Keep the agent listener on a trusted network; SPOP connections
+to this listener are unencrypted and carry session cookies and bypass tokens.
+For containers, bind `SPOA_LISTEN=0.0.0.0:12345` and make that port reachable
+from HAProxy on the private container network.
+
+Each NOTIFY must contain one message named `auth`, with named string arguments
+(optional arguments may be SPOP NULL):
+
+| Argument | Meaning |
+| --- | --- |
+| `url` | Required absolute HTTP(S) URL of the original request |
+| `method` | Original HTTP method |
+| `cookie` | Cookie header; repeated arguments are accepted |
+| `token` | `X-Ngx-Auth-Token` bypass token |
+| `proto` | `http` or `https`, used for the cookie's Secure flag |
+| `preflight` | `Access-Control-Request-Method` header for OPTIONS preflights |
+
+ACKs set transaction variables `status`, `location`, and `set_cookie`.
+With the example's `var-prefix`, HAProxy reads these as
+`txn.ngx_auth.status`, `txn.ngx_auth.location`, and `txn.ngx_auth.set_cookie`.
+The auth status is 200 for authorized requests, 401 for a new login, 403 for
+denied sessions/tokens, 400 for invalid input, or 500 for an internal error.
+Empty location/cookie values clear the results of earlier requests.
+HAProxy turns 401 into a 302 with the Location and Set-Cookie headers, returns
+403 for denied access, and returns 503 for agent failures or unexpected results.
+The agent negotiates frame sizes up to 16,380 bytes and supports persistent
+connections and SPOE health checks. Fragmentation, async processing, and
+pipelining are not advertised; an oversized request or response fails closed.
 
 ## Usage: database
 

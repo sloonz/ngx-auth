@@ -9,6 +9,7 @@ use url::Url;
 #[derive(Clone)]
 pub struct Config {
     pub listen: String,
+    pub spoa_listen: Option<std::net::SocketAddr>,
     pub origin: String,
     pub secret: Vec<u8>,
     pub bypass_key: Option<josekit::jwk::Jwk>,
@@ -39,6 +40,14 @@ impl Config {
             })
         };
         let listen = get("LISTEN", "47814")?;
+        let spoa_listen = env::var("SPOA_LISTEN")
+            .ok()
+            .map(|address| {
+                address
+                    .parse()
+                    .context("SPOA_LISTEN must be an IP:port address")
+            })
+            .transpose()?;
         let origin = get("CALLBACK_ORIGIN", "http://localhost:47814")?;
         let url = Url::parse(&origin).context("invalid CALLBACK_ORIGIN")?;
         if !matches!(url.scheme(), "http" | "https")
@@ -111,6 +120,7 @@ impl Config {
         }
         Ok(Self {
             listen,
+            spoa_listen,
             origin: origin.trim_end_matches('/').into(),
             secret,
             bypass_key,

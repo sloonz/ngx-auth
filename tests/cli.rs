@@ -2,6 +2,23 @@ use ngx_auth::crypto;
 use std::process::Command;
 
 #[test]
+fn rejects_invalid_spoa_listener_addresses() {
+    for address in ["", "12345", "localhost:12345", "127.0.0.1:99999"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_ngx-auth"))
+            .arg("server")
+            .env("SPOA_LISTEN", address)
+            .env("LISTEN", "0")
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("SPOA_LISTEN must be an IP:port address")
+        );
+    }
+}
+
+#[test]
 fn generates_bypass_credentials_and_signs_a_scoped_token() {
     let pair = Command::new(env!("CARGO_BIN_EXE_ngx-auth"))
         .arg("make-bypass-pair")

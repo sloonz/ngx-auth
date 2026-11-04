@@ -45,6 +45,12 @@ impl App {
             .route("/callback/{provider}", get(callback))
             .with_state(self)
     }
+    /// The same auth check is used by HTTP subrequests and the SPOA listener.
+    pub(crate) async fn authenticate(&self, headers: HeaderMap) -> Response {
+        auth(State(self.clone()), headers)
+            .await
+            .unwrap_or_else(IntoResponse::into_response)
+    }
     async fn keys(&self, url: &str, refresh: bool) -> Result<Vec<Jwk>> {
         let mut cache = self.keys.lock().await;
         if !refresh

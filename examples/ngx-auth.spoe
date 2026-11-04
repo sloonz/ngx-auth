@@ -1,0 +1,14 @@
+[ngx-auth]
+spoe-agent ngx-auth
+    groups auth
+    option var-prefix ngx_auth
+    timeout hello 5s
+    timeout idle 30s
+    timeout processing 5s
+    use-backend auth_agent
+
+spoe-group auth
+    messages auth
+
+spoe-message auth
+    args url=var(txn.ngx_auth_url) method=method cookie=req.hdr(cookie) token=req.hdr(x-ngx-auth-token) proto=ssl_fc,iif(https,http) preflight=req.hdr(access-control-request-method)
